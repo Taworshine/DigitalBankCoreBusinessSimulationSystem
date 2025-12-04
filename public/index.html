@@ -1,43 +1,701 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>数字银行 - 核心业务模拟系统</title>
+  <!-- 引入Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- 引入Font Awesome -->
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  
+  <!-- 自定义配置 -->
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#E9D5FF', // 浅紫色主色调
+            secondary: '#9333EA', // 深紫色辅助色
+            accent: '#F5F3FF', // 超浅紫色背景
+            dark: '#4C1D95', // 暗紫色文本
+            light: '#FBFAFF', // 近白色背景
+          },
+          fontFamily: {
+            inter: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'card': '0 10px 25px -5px rgba(147, 51, 234, 0.1)',
+            'card-hover': '0 20px 30px -10px rgba(147, 51, 234, 0.2)',
+          }
+        },
+      }
+    }
+  </script>
+  
+  <!-- 自定义工具类 -->
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .content-auto {
+        content-visibility: auto;
+      }
+      .text-shadow {
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .transition-custom {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .bg-gradient-purple {
+        background: linear-gradient(135deg, #E9D5FF 0%, #F5F3FF 100%);
+      }
+    }
+  </style>
+  
+  <style>
+    /* 全局样式 */
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      scroll-behavior: smooth;
+    }
+    
+    /* 页面切换动画 */
+    .page {
+      display: none;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    
+    .page.active {
+      display: block;
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    /* 导航栏激活状态 */
+    .nav-link.active {
+      color: #9333EA;
+      font-weight: 600;
+      border-bottom: 2px solid #9333EA;
+    }
+    
+    /* 按钮悬停效果 */
+    .btn-primary {
+      background-color: #9333EA;
+      color: white;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+      background-color: #7E22CE;
+      transform: translateY(-2px);
+    }
+    
+    /* 卡片动画 */
+    .card {
+      transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 30px -10px rgba(147, 51, 234, 0.2);
+    }
+    
+    /* 输入框焦点效果 */
+    .form-input:focus {
+      border-color: #9333EA;
+      box-shadow: 0 0 0 3px rgba(147, 51, 234, 0.1);
+    }
+  </style>
+</head>
+<body class="bg-accent text-dark min-h-screen">
+  <!-- 导航栏 -->
+  <header class="sticky top-0 z-50 bg-light/90 backdrop-blur-sm shadow-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex justify-between items-center h-16">
+        <!-- 银行Logo -->
+        <div class="flex items-center">
+          <i class="fa fa-bank text-secondary text-2xl mr-2"></i>
+          <span class="text-xl font-bold text-secondary">数字银行</span>
+        </div>
+        
+        <!-- 导航链接 - 桌面端 -->
+        <nav class="hidden md:flex space-x-8">
+          <a href="#home" class="nav-link active px-3 py-2 text-sm font-medium transition-custom" data-page="home">
+            <i class="fa fa-home mr-1"></i> 首页
+          </a>
+          <a href="#account" class="nav-link px-3 py-2 text-sm font-medium transition-custom" data-page="account">
+            <i class="fa fa-user mr-1"></i> 账户
+          </a>
+          <a href="#deposit" class="nav-link px-3 py-2 text-sm font-medium transition-custom" data-page="deposit">
+            <i class="fa fa-credit-card mr-1"></i> 存款
+          </a>
+          <a href="#transfer" class="nav-link px-3 py-2 text-sm font-medium transition-custom" data-page="transfer">
+            <i class="fa fa-exchange mr-1"></i> 转账
+          </a>
+        </nav>
+        
+        <!-- 移动端菜单按钮 -->
+        <div class="md:hidden">
+          <button id="mobile-menu-button" class="text-dark hover:text-secondary focus:outline-none">
+            <i class="fa fa-bars text-xl"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 移动端导航菜单 -->
+    <div id="mobile-menu" class="hidden md:hidden bg-light shadow-lg">
+      <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+        <a href="#home" class="nav-link active block px-3 py-2 rounded-md text-base font-medium transition-custom" data-page="home">
+          <i class="fa fa-home mr-2"></i> 首页
+        </a>
+        <a href="#account" class="nav-link block px-3 py-2 rounded-md text-base font-medium transition-custom" data-page="account">
+          <i class="fa fa-user mr-2"></i> 账户
+        </a>
+        <a href="#deposit" class="nav-link block px-3 py-2 rounded-md text-base font-medium transition-custom" data-page="deposit">
+          <i class="fa fa-credit-card mr-2"></i> 存款
+        </a>
+        <a href="#transfer" class="nav-link block px-3 py-2 rounded-md text-base font-medium transition-custom" data-page="transfer">
+          <i class="fa fa-exchange mr-2"></i> 转账
+        </a>
+      </div>
+    </div>
+  </header>
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
+  <!-- 主内容区 -->
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- 首页 -->
+    <section id="home" class="page active">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+        <div class="space-y-6">
+          <h1 class="text-[clamp(2rem,5vw,3.5rem)] font-bold leading-tight text-dark">
+            便捷、安全的<br><span class="text-secondary">数字银行体验</span>
+          </h1>
+          <p class="text-lg text-gray-600">
+            模拟银行核心业务，轻松管理账户、存款与转账，
+            为您提供直观、高效的金融操作体验。
+          </p>
+          <div class="flex flex-wrap gap-4">
+            <a href="#account" class="btn-primary px-6 py-3 rounded-lg font-medium shadow-md transition-custom" data-page="account">
+              查看我的账户
+            </a>
+            <a href="#deposit" class="bg-white border border-secondary text-secondary px-6 py-3 rounded-lg font-medium shadow-md transition-custom" data-page="deposit">
+              立即存款
+            </a>
+          </div>
+        </div>
+        <div class="relative">
+          <div class="bg-white rounded-2xl shadow-card p-8 relative z-10">
+            <img src="https://picsum.photos/id/180/600/400" alt="数字银行服务" class="rounded-xl w-full h-auto">
+            <div class="absolute -bottom-5 -left-5 bg-secondary text-white p-4 rounded-xl shadow-lg">
+              <p class="font-medium">安全加密技术</p>
+              <p class="text-sm opacity-90">保障您的资金安全</p>
+            </div>
+          </div>
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3/4 h-3/4 bg-secondary/20 rounded-2xl blur-2xl -z-10"></div>
+        </div>
+      </div>
+      
+      <!-- 服务特点 -->
+      <div class="mt-20">
+        <h2 class="text-2xl md:text-3xl font-bold text-center mb-12">核心服务特点</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div class="card bg-white rounded-xl shadow-card p-6 text-center">
+            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fa fa-lock text-secondary text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">安全可靠</h3>
+            <p class="text-gray-600">模拟真实银行安全机制，保障账户信息与交易安全</p>
+          </div>
+          <div class="card bg-white rounded-xl shadow-card p-6 text-center">
+            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fa fa-bolt text-secondary text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">操作便捷</h3>
+            <p class="text-gray-600">简洁直观的操作界面，轻松完成各类银行业务</p>
+          </div>
+          <div class="card bg-white rounded-xl shadow-card p-6 text-center">
+            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4">
+              <i class="fa fa-line-chart text-secondary text-2xl"></i>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">实时管理</h3>
+            <p class="text-gray-600">账户信息实时更新，随时掌握财务状况</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+    <!-- 账户页面 -->
+    <section id="account" class="page">
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl font-bold mb-2">我的账户</h2>
+          <p class="text-gray-600">查看您的账户信息与资产状况</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-card p-8 mb-8">
+          <div class="flex flex-col md:flex-row items-start md:items-center mb-6">
+            <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mr-4 mb-4 md:mb-0">
+              <i class="fa fa-user text-secondary text-2xl"></i>
+            </div>
+            <div>
+              <h3 class="text-xl font-semibold">张三</h3>
+              <p class="text-gray-600">客户编号: 8001234567</p>
+            </div>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-accent rounded-xl p-6">
+              <p class="text-gray-600 mb-1">账户余额</p>
+              <p class="text-3xl font-bold text-secondary" id="account-balance">¥12,580.00</p>
+            </div>
+            <div class="bg-accent rounded-xl p-6">
+              <p class="text-gray-600 mb-1">账户类型</p>
+              <p class="text-2xl font-semibold">储蓄卡</p>
+            </div>
+          </div>
+          
+          <div class="mt-8 space-y-4">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <span class="text-gray-600">开户日期</span>
+              <span class="font-medium">2023-06-15</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <span class="text-gray-600">账户状态</span>
+              <span class="font-medium text-green-600">正常</span>
+            </div>
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+              <span class="text-gray-600">最近交易</span>
+              <span class="font-medium">2025-11-05 14:30</span>
+            </div>
+            <div class="flex justify-between items-center pb-3">
+              <span class="text-gray-600">可用额度</span>
+              <span class="font-medium">¥12,580.00</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 最近交易记录 -->
+        <div class="bg-white rounded-2xl shadow-card p-8">
+          <h3 class="text-xl font-semibold mb-6 flex items-center">
+            <i class="fa fa-history text-secondary mr-2"></i> 最近交易记录
+          </h3>
+          <div class="space-y-4 max-h-80 overflow-y-auto pr-2">
+            <div class="flex justify-between items-center p-3 bg-accent rounded-lg">
+              <div class="flex items-center">
+                <i class="fa fa-credit-card text-green-500 text-xl mr-3"></i>
+                <div>
+                  <p class="font-medium">存款</p>
+                  <p class="text-sm text-gray-600">2025-11-05 14:30</p>
+                </div>
+              </div>
+              <p class="font-bold text-green-500">+¥2,000.00</p>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-accent rounded-lg">
+              <div class="flex items-center">
+                <i class="fa fa-exchange text-blue-500 text-xl mr-3"></i>
+                <div>
+                  <p class="font-medium">转账</p>
+                  <p class="text-sm text-gray-600">2025-11-03 09:15</p>
+                </div>
+              </div>
+              <p class="font-bold text-red-500">-¥1,200.00</p>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-accent rounded-lg">
+              <div class="flex items-center">
+                <i class="fa fa-shopping-cart text-purple-500 text-xl mr-3"></i>
+                <div>
+                  <p class="font-medium">消费</p>
+                  <p class="text-sm text-gray-600">2025-11-01 18:45</p>
+                </div>
+              </div>
+              <p class="font-bold text-red-500">-¥358.50</p>
+            </div>
+            <div class="flex justify-between items-center p-3 bg-accent rounded-lg">
+              <div class="flex items-center">
+                <i class="fa fa-credit-card text-green-500 text-xl mr-3"></i>
+                <div>
+                  <p class="font-medium">工资入账</p>
+                  <p class="text-sm text-gray-600">2025-10-30 10:00</p>
+                </div>
+              </div>
+              <p class="font-bold text-green-500">+¥8,500.00</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
-  </body>
+    <!-- 存款页面 -->
+    <section id="deposit" class="page">
+      <div class="max-w-2xl mx-auto">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl font-bold mb-2">存款操作</h2>
+          <p class="text-gray-600">快速为您的账户存入资金</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-card p-8">
+          <form id="deposit-form" class="space-y-6">
+            <div>
+              <label for="deposit-account" class="block text-sm font-medium text-gray-700 mb-1">存款账户</label>
+              <div class="relative">
+                <select id="deposit-account" class="form-input block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+                  <option value="8001234567">储蓄卡 (尾号4567)</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <i class="fa fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label for="deposit-amount" class="block text-sm font-medium text-gray-700 mb-1">存款金额 (元)</label>
+              <input type="number" id="deposit-amount" min="1" step="0.01" placeholder="请输入存款金额" 
+                     class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+            </div>
+            
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">选择存款金额</label>
+              <div class="grid grid-cols-3 gap-3">
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  ¥100
+                </button>
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  ¥500
+                </button>
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  ¥1000
+                </button>
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  ¥2000
+                </button>
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  ¥5000
+                </button>
+                <button type="button" class="deposit-quick-btn bg-accent hover:bg-primary border border-gray-200 rounded-lg py-2 transition-custom">
+                  自定义
+                </button>
+              </div>
+            </div>
+            
+            <div>
+              <label for="deposit-note" class="block text-sm font-medium text-gray-700 mb-1">存款备注 (可选)</label>
+              <textarea id="deposit-note" rows="2" placeholder="请输入备注信息" 
+                        class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom"></textarea>
+            </div>
+            
+            <button type="submit" class="btn-primary w-full py-3 rounded-lg font-medium shadow-md transition-custom">
+              <i class="fa fa-check mr-2"></i> 确认存款
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- 转账页面 -->
+    <section id="transfer" class="page">
+      <div class="max-w-2xl mx-auto">
+        <div class="text-center mb-10">
+          <h2 class="text-3xl font-bold mb-2">转账操作</h2>
+          <p class="text-gray-600">安全快捷地向他人转账</p>
+        </div>
+        
+        <div class="bg-white rounded-2xl shadow-card p-8">
+          <form id="transfer-form" class="space-y-6">
+            <div>
+              <label for="transfer-from" class="block text-sm font-medium text-gray-700 mb-1">转出账户</label>
+              <div class="relative">
+                <select id="transfer-from" class="form-input block w-full pl-3 pr-10 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+                  <option value="8001234567">储蓄卡 (尾号4567) - 余额: ¥12,580.00</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <i class="fa fa-chevron-down text-xs"></i>
+                </div>
+              </div>
+            </div>
+            
+            <div>
+              <label for="transfer-to" class="block text-sm font-medium text-gray-700 mb-1">收款账户</label>
+              <input type="text" id="transfer-to" placeholder="请输入收款账户卡号" 
+                     class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+            </div>
+            
+            <div>
+              <label for="transfer-name" class="block text-sm font-medium text-gray-700 mb-1">收款人姓名</label>
+              <input type="text" id="transfer-name" placeholder="请输入收款人姓名" 
+                     class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+            </div>
+            
+            <div>
+              <label for="transfer-amount" class="block text-sm font-medium text-gray-700 mb-1">转账金额 (元)</label>
+              <input type="number" id="transfer-amount" min="1" step="0.01" placeholder="请输入转账金额" 
+                     class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom">
+            </div>
+            
+            <div>
+              <label for="transfer-note" class="block text-sm font-medium text-gray-700 mb-1">转账备注 (可选)</label>
+              <textarea id="transfer-note" rows="2" placeholder="请输入备注信息" 
+                        class="form-input block w-full px-3 py-3 text-base border-gray-300 focus:outline-none focus:ring-2 focus:ring-secondary/50 focus:border-secondary rounded-lg transition-custom"></textarea>
+            </div>
+            
+            <div class="bg-accent p-4 rounded-lg">
+              <div class="flex items-start">
+                <i class="fa fa-info-circle text-secondary mt-1 mr-2"></i>
+                <p class="text-sm text-gray-600">
+                  本系统仅为学习模拟使用，不涉及真实资金交易。
+                  转账操作仅为模拟演示，不会产生实际资金转移。
+                </p>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn-primary w-full py-3 rounded-lg font-medium shadow-md transition-custom">
+              <i class="fa fa-exchange mr-2"></i> 确认转账
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- 页脚 -->
+  <footer class="bg-light border-t border-gray-200 mt-16">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <div class="flex items-center mb-4">
+            <i class="fa fa-bank text-secondary text-2xl mr-2"></i>
+            <span class="text-xl font-bold text-secondary">数字银行</span>
+          </div>
+          <p class="text-gray-600 text-sm">
+            数字银行核心业务模拟系统，仅供学习使用。
+            本系统不涉及真实金融交易，请勿输入真实个人信息。
+          </p>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold mb-4">快速链接</h3>
+          <ul class="space-y-2 text-sm">
+            <li><a href="#home" class="text-gray-600 hover:text-secondary transition-custom" data-page="home">首页</a></li>
+            <li><a href="#account" class="text-gray-600 hover:text-secondary transition-custom" data-page="account">账户</a></li>
+            <li><a href="#deposit" class="text-gray-600 hover:text-secondary transition-custom" data-page="deposit">存款</a></li>
+            <li><a href="#transfer" class="text-gray-600 hover:text-secondary transition-custom" data-page="transfer">转账</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold mb-4">联系我们</h3>
+          <ul class="space-y-2 text-sm text-gray-600">
+            <li class="flex items-center">
+              <i class="fa fa-envelope text-secondary mr-2"></i>
+              <span>support@digitalbank.com</span>
+            </li>
+            <li class="flex items-center">
+              <i class="fa fa-phone text-secondary mr-2"></i>
+              <span>400-123-4567</span>
+            </li>
+            <li class="flex items-center">
+              <i class="fa fa-map-marker text-secondary mr-2"></i>
+              <span>北京市海淀区科技园区88号</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+      <div class="border-t border-gray-200 mt-8 pt-8 text-center text-sm text-gray-500">
+        <p>© 2025 数字银行模拟系统 版权所有 | 仅供学习使用</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 成功提示弹窗 -->
+  <div id="success-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden">
+    <div class="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full mx-4 transform transition-all scale-95 opacity-0" id="modal-content">
+      <div class="text-center">
+        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+          <i class="fa fa-check text-green-500 text-2xl"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2" id="modal-title">操作成功</h3>
+        <p class="text-gray-600 mb-6" id="modal-message">您的操作已成功完成</p>
+        <button id="modal-close" class="btn-primary w-full py-3 rounded-lg font-medium shadow-md transition-custom">
+          确定
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    // 页面切换功能
+    document.addEventListener('DOMContentLoaded', function() {
+      const navLinks = document.querySelectorAll('.nav-link');
+      const pages = document.querySelectorAll('.page');
+      const mobileMenuButton = document.getElementById('mobile-menu-button');
+      const mobileMenu = document.getElementById('mobile-menu');
+      const depositForm = document.getElementById('deposit-form');
+      const transferForm = document.getElementById('transfer-form');
+      const depositQuickBtns = document.querySelectorAll('.deposit-quick-btn');
+      const successModal = document.getElementById('success-modal');
+      const modalContent = document.getElementById('modal-content');
+      const modalClose = document.getElementById('modal-close');
+      const modalTitle = document.getElementById('modal-title');
+      const modalMessage = document.getElementById('modal-message');
+      const accountBalance = document.getElementById('account-balance');
+      
+      // 初始余额
+      let balance = 12580.00;
+      
+      // 导航链接点击事件
+      navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          
+          // 移除所有激活状态
+          navLinks.forEach(l => l.classList.remove('active'));
+          pages.forEach(page => page.classList.remove('active'));
+          
+          // 添加当前激活状态
+          this.classList.add('active');
+          const targetPage = this.getAttribute('data-page');
+          document.getElementById(targetPage).classList.add('active');
+          
+          // 关闭移动端菜单
+          mobileMenu.classList.add('hidden');
+          
+          // 滚动到顶部
+          window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          });
+        });
+      });
+      
+      // 移动端菜单切换
+      mobileMenuButton.addEventListener('click', function() {
+        mobileMenu.classList.toggle('hidden');
+      });
+      
+      // 存款快速按钮
+      depositQuickBtns.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          const text = this.textContent.trim();
+          if (text !== '自定义') {
+            document.getElementById('deposit-amount').value = text.replace('¥', '');
+          } else {
+            document.getElementById('deposit-amount').focus();
+          }
+        });
+      });
+      
+      // 存款表单提交
+      depositForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const amount = parseFloat(document.getElementById('deposit-amount').value);
+        
+        if (isNaN(amount) || amount <= 0) {
+          alert('请输入有效的存款金额');
+          return;
+        }
+        
+        // 更新余额
+        balance += amount;
+        updateBalanceDisplay();
+        
+        // 显示成功弹窗
+        showModal('存款成功', `您已成功存入 ¥${amount.toFixed(2)}，当前余额: ¥${balance.toFixed(2)}`);
+        
+        // 重置表单
+        depositForm.reset();
+      });
+      
+      // 转账表单提交
+      transferForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const toAccount = document.getElementById('transfer-to').value;
+        const toName = document.getElementById('transfer-name').value;
+        const amount = parseFloat(document.getElementById('transfer-amount').value);
+        
+        if (!toAccount || !toName) {
+          alert('请输入收款账户和收款人姓名');
+          return;
+        }
+        
+        if (isNaN(amount) || amount <= 0) {
+          alert('请输入有效的转账金额');
+          return;
+        }
+        
+        if (amount > balance) {
+          alert('转账金额不能超过账户余额');
+          return;
+        }
+        
+        // 更新余额
+        balance -= amount;
+        updateBalanceDisplay();
+        
+        // 显示成功弹窗
+        showModal('转账成功', `您已成功转账 ¥${amount.toFixed(2)} 至账户 ${toAccount} (${toName})，当前余额: ¥${balance.toFixed(2)}`);
+        
+        // 重置表单
+        transferForm.reset();
+      });
+      
+      // 关闭弹窗
+      modalClose.addEventListener('click', function() {
+        hideModal();
+      });
+      
+      // 点击弹窗外部关闭
+      successModal.addEventListener('click', function(e) {
+        if (e.target === successModal) {
+          hideModal();
+        }
+      });
+      
+      // 显示弹窗
+      function showModal(title, message) {
+        modalTitle.textContent = title;
+        modalMessage.textContent = message;
+        successModal.classList.remove('hidden');
+        
+        // 弹窗动画
+        setTimeout(() => {
+          modalContent.classList.remove('scale-95', 'opacity-0');
+          modalContent.classList.add('scale-100', 'opacity-100');
+        }, 10);
+      }
+      
+      // 隐藏弹窗
+      function hideModal() {
+        modalContent.classList.remove('scale-100', 'opacity-100');
+        modalContent.classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+          successModal.classList.add('hidden');
+        }, 300);
+      }
+      
+      // 更新余额显示
+      function updateBalanceDisplay() {
+        accountBalance.textContent = `¥${balance.toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`;
+        
+        // 更新转账页面的余额显示
+        const transferFrom = document.getElementById('transfer-from');
+        transferFrom.options[0].text = `储蓄卡 (尾号4567) - 余额: ¥${balance.toLocaleString('zh-CN', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2
+        })}`;
+      }
+      
+      // 键盘事件 - 按ESC关闭弹窗
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && !successModal.classList.contains('hidden')) {
+          hideModal();
+        }
+      });
+    });
+  </script>
+</body>
 </html>
