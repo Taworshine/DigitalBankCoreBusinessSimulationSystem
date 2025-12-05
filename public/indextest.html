@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账户管理系统</title>
+    <style>
+        /* 基础样式，保证界面简洁可用 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+        body {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .balance-box {
+            font-size: 24px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .form-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            min-width: 300px;
+            text-align: center;
+        }
+        .loading {
+            color: #666;
+            margin-left: 10px;
+            display: none;
+        }
+        .message-box {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>账户管理系统</h1>
+
+    <!-- 余额展示区 -->
+    <div class="balance-box">
+        当前余额：<span id="balance">0.00</span> 元
+    </div>
+
+    <!-- 存款表单 -->
+    <div class="form-container">
+        <h2>存款操作</h2>
+        <div class="form-group">
+            <label for="deposit-amount">存款金额：</label>
+            <input type="number" id="deposit-amount" placeholder="请输入存款金额" min="0.01" step="0.01">
+        </div>
+        <button id="deposit-btn">确认存款</button>
+        <span class="loading" id="deposit-loading">处理中...</span>
+    </div>
+
+    <!-- 转账表单 -->
+    <div class="form-container">
+        <h2>转账操作</h2>
+        <div class="form-group">
+            <label for="target-account">目标账户：</label>
+            <input type="text" id="target-account" placeholder="请输入目标账户号">
+        </div>
+        <div class="form-group">
+            <label for="transfer-amount">转账金额：</label>
+            <input type="number" id="transfer-amount" placeholder="请输入转账金额" min="0.01" step="0.01">
+        </div>
+        <button id="transfer-btn">确认转账</button>
+        <span class="loading" id="transfer-loading">处理中...</span>
+    </div>
+
+    <!-- 消息提示框 -->
+    <div class="message-box" id="message-box"></div>
+
+    <!-- 弹窗组件 -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3 id="modal-title"></h3>
+            <p id="modal-content"></p>
+            <button id="modal-close" style="margin-top: 15px;">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        // -------------------------- 核心配置 --------------------------
+        const API_BASE_URL = "http://localhost:8080/api";
+        const WS_BASE_URL = "ws://localhost:8080/ws";
+
+        // 全局状态
+        let balance = 0.00;
+        let websocket = null;
+
+        // -------------------------- DOM元素获取 --------------------------
+        const balanceEl = document.getElementById('balance');
+        const depositBtn = document.getElementById('deposit-btn');
+        const transferBtn = document.getElementById('transfer-btn');
+        const depositLoading = document.getElementById('deposit-loading');
+        const transferLoading = document.getElementById('transfer-loading');
+        const messageBox = document.getElementById('message-box');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalClose = document.getElementById('modal-close');
+
+        // -------------------------- 工具函数 --------------------------
+        // 更新余额显示
+        function updateBalanceDisplay() {
+            balanceEl.textContent = balance.toFixed(2);
+        }
+
+        // 显示消息提示
+        function showMessage(text, isSuccess = true) {
+            messageBox.textContent = text;
+            messageBox.className = `message-box ${isSuccess ? 'success' : 'error'}`;
+            setTimeout(() => {
+                messageBox.className = 'message-box';
+            }, 3000);
+        }
+
+        // 显示弹窗
+        function showModal(title, content) {
+            modalTitle.textContent = title;
+            modalContent.textContent = content;
+            modal.style.display = 'flex';
+        }
+
+        // 隐藏弹窗
+        function hideModal() {
+            modal.style.display = 'none';
+        }
+
+        // -------------------------- HTTP请求封装 --------------------------
+        async function requestApi(path, method = 'GET', data = null) {
+            const url = `${API_BASE_URL}${path}`;
+            const options = {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            };
+
+            // POST/PUT请求添加请求体
+            if (data && (method === 'POST' || method === 'PUT')) {
+                options.body = JSON.stringify(data);
+            }
+
+            try {
+                const response = await fetch(url, options);
+                const result = await response.json();
+
+                // 处理后端错误码（对应你定义的ResCode）
+                if (result.code !== 200) {
+                    const errorMsg = result.msg || '操作失败';
+                    throw new Error(errorMsg);
+                }
+                return result.data;
+            } catch (error) {
+                showMessage(`请求失败：${error.message}`, false);
+                throw error;
+            }
+        }
+
+        // -------------------------- 业务逻辑函数 --------------------------
+        // 初始化：获取账户信息
+        async function initAccount() {
+            try {
+                const accountData = await requestApi('/account', 'GET');
+                balance = accountData.balance || 0.00;
+                updateBalanceDisplay();
+                showMessage('账户信息加载成功');
+            } catch (error) {
+                console.error('初始化账户失败:', error);
+                showMessage('账户信息加载失败，使用默认值', false);
+            }
+        }
+
+        // 存款操作
+        async function handleDeposit() {
+            const amount = parseFloat(document.getElementById('deposit-amount').value);
+            
+            // 前端校验
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('请输入有效的存款金额（大于0）', false);
+                return;
+            }
+
+            // 显示加载状态
+            depositBtn.disabled = true;
+            depositLoading.style.display = 'inline';
+
+            try {
+                // 发送存款请求到后端
+                const result = await requestApi('/deposit', 'POST', {
+                    amount: amount,
+                    accountId: '8001234567' // 示例账户ID，可替换为实际值
+                });
+
+                // 更新本地余额
+                balance = result.newBalance;
+                updateBalanceDisplay();
+                showMessage(`存款成功！当前余额：${balance.toFixed(2)}元`);
+                showModal('存款成功', `您已成功存入¥${amount.toFixed(2)}，当前账户余额：¥${balance.toFixed(2)}`);
+                
+                // 清空输入框
+                document.getElementById('deposit-amount').value = '';
+            } catch (error) {
+                showMessage(`存款失败：${error.message}`, false);
+            } finally {
+                // 隐藏加载状态
+                depositBtn.disabled = false;
+                depositLoading.style.display = 'none';
+            }
+        }
+
+        // 转账操作
+        async function handleTransfer() {
+            const targetAccount = document.getElementById('target-account').value.trim();
+            const amount = parseFloat(document.getElementById('transfer-amount').value);
+            
+            // 前端校验
+            if (!targetAccount) {
+                showMessage('请输入目标账户号', false);
+                return;
+            }
+            if (isNaN(amount) || amount <= 0) {
+                showMessage('请输入有效的转账金额（大于0）', false);
+                return;
+            }
+            if (amount > balance) {
+                showMessage('余额不足，无法转账', false);
+                return;
+            }
+
+            // 显示加载状态
+            transferBtn.disabled = true;
+            transferLoading.style.display = 'inline';
+
+            try {
+                // 发送转账请求到后端
+                const result = await requestApi('/transfer', 'POST', {
+                    fromAccount: '8001234567', // 源账户
+                    toAccount: targetAccount,   // 目标账户
+                    amount: amount
+                });
+
+                // 更新本地余额
+                balance = result.newBalance;
+                updateBalanceDisplay();
+                showMessage(`转账成功！当前余额：${balance.toFixed(2)}元`);
+                showModal('转账成功', `您已成功转账¥${amount.toFixed(2)}至账户${targetAccount}，当前余额：¥${balance.toFixed(2)}`);
+                
+                // 清空输入框
+                document.getElementById('target-account').value = '';
+                document.getElementById('transfer-amount').value = '';
+            } catch (error) {
+                showMessage(`转账失败：${error.message}`, false);
+            } finally {
+                // 隐藏加载状态
+                transferBtn.disabled = false;
+                transferLoading.style.display = 'none';
+            }
+        }
+
+        // -------------------------- WebSocket实时通信 --------------------------
+        // 初始化WebSocket连接
+        function initWebSocket() {
+            // 关闭已有连接
+            if (websocket) {
+                websocket.close();
+            }
+
+            // 创建新连接
+            websocket = new WebSocket(WS_BASE_URL);
+
+            // 连接成功
+            websocket.onopen = function() {
+                console.log('WebSocket连接已建立');
+                showMessage('实时通知已开启');
+                // 发送认证信息（可选）
+                websocket.send(JSON.stringify({
+                    type: 'auth',
+                    accountId: '8001234567'
+                }));
+            };
+
+            // 接收后端消息
+            websocket.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                console.log('收到后端实时消息:', data);
+                
+                // 处理不同类型的实时消息
+                switch (data.type) {
+                    case 'balanceUpdate':
+                        // 后端推送的余额更新
+                        balance = data.newBalance;
+                        updateBalanceDisplay();
+                        showModal('余额更新', `您的账户余额已更新为：¥${balance.toFixed(2)}`);
+                        break;
+                    case 'transactionAlert':
+                        // 后端推送的交易提醒
+                        showModal('交易提醒', data.message);
+                        break;
+                    case 'systemNotice':
+                        // 系统通知
+                        showMessage(`系统通知：${data.message}`);
+                        break;
+                }
+            };
+
+            // 连接错误
+            websocket.onerror = function(error) {
+                console.error('WebSocket错误:', error);
+                showMessage('实时通知连接失败', false);
+            };
+
+            // 连接关闭（自动重连）
+            websocket.onclose = function() {
+                console.log('WebSocket连接已关闭，5秒后重试');
+                showMessage('实时通知已断开，正在重连...', false);
+                setTimeout(initWebSocket, 5000);
+            };
+        }
+
+        // -------------------------- 事件绑定 --------------------------
+        // 存款按钮点击
+        depositBtn.addEventListener('click', handleDeposit);
+        // 转账按钮点击
+        transferBtn.addEventListener('click', handleTransfer);
+        // 弹窗关闭按钮
+        modalClose.addEventListener('click', hideModal);
+        // 点击弹窗外层关闭
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                hideModal();
+            }
+        });
+
+        // -------------------------- 页面初始化 --------------------------
+        window.onload = function() {
+            // 加载账户信息
+            initAccount();
+            // 初始化WebSocket
+            initWebSocket();
+        };
+    </script>
+</body>
+</html>
